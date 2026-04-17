@@ -2,12 +2,11 @@
 # data_fetch.py
 # Stock Market Movement Prediction — Data Fetching
 #
-# Usage:
-#   /opt/anaconda3/envs/seis631/bin/python data_fetch.py
 #
 # Output files saved to /data folder:
 #   SPY_raw.csv   - raw price data
 #   TSLA_raw.csv  - raw price data
+#   VIX_raw.csv   - VIX volatility index data
 # =============================================================================
 
 import yfinance as yf
@@ -17,7 +16,7 @@ import os
 
 # CONFIGURATION
 
-TICKERS    = ["SPY", "TSLA"]
+TICKERS    = ["SPY", "TSLA", "^VIX"]
 START_DATE = "2015-01-01"
 END_DATE   = "2024-12-31"
 DATA_DIR   = "data"
@@ -30,6 +29,7 @@ def download_data(ticker, start=START_DATE, end=END_DATE):
     Download daily OHLCV data from Yahoo Finance.
     Free, no API key, full 10 years available.
     Uses Adj Close which handles splits and dividends.
+    Note: VIX has no volume — filled with 0 for consistent schema.
     """
     print(f"  Downloading {ticker} ({start} to {end})...")
 
@@ -46,11 +46,16 @@ def download_data(ticker, start=START_DATE, end=END_DATE):
     if "adj close" in df.columns:
         df.rename(columns={"adj close": "adj_close"}, inplace=True)
 
+    # VIX has no volume or adj_close — fill with 0 for consistent schema
+    if "volume" not in df.columns:
+        df["volume"] = 0
+    if "adj_close" not in df.columns:
+        df["adj_close"] = df["close"]
+
     # Keep only OHLCV + Adj Close
     cols = ["open", "high", "low", "close", "adj_close", "volume"]
     df   = df[[c for c in cols if c in df.columns]].copy()
 
-    # Clean up index
     df.index      = pd.to_datetime(df.index)
     df.index.name = "date"
     df.sort_index(inplace=True)
@@ -62,14 +67,15 @@ def download_data(ticker, start=START_DATE, end=END_DATE):
 
     return df
 
+
 # SAVE
 
 def save_data(df, ticker):
     os.makedirs(DATA_DIR, exist_ok=True)
-    path = os.path.join(DATA_DIR, f"{ticker}_raw.csv")
+    clean_name = ticker.replace("^", "")          # ^VIX → VIX
+    path = os.path.join(DATA_DIR, f"{clean_name}_raw.csv")
     df.to_csv(path)
     print(f"  Saved to {path}")
-
 
 
 # MAIN
@@ -94,6 +100,5 @@ if __name__ == "__main__":
     print(f"{'='*60}")
     print("\nFiles saved:")
     for ticker in TICKERS:
-        print(f"  data/{ticker}_raw.csv")
-
-   
+        clean_name = ticker.replace("^", "")
+        print(f"  {DATA_DIR}/{clean_name}_raw.csv")
