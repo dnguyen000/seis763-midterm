@@ -126,9 +126,126 @@ Standard deviation across folds measures **consistency** — a model with lower 
 
 ---
 
+## Models
+
+All models are evaluated using walk-forward validation across both tickers independently.
+
+### Regression Models
+Predict the **5-day forward return** — the percentage price change from today's close to the close 5 trading days from now. A positive value means the model expects the price to rise; negative means it expects a decline.
+
+| Model | Purpose | Primary Metric | Supporting Metrics |
+|---|---|---|---|
+| **Linear Regression** | Baseline model. Fits a straight line through the feature space to predict the 5-day return as a weighted sum of inputs. Coefficients reveal which features most influence the prediction. | RMSE | MAE, R² |
+| **Ridge Regression** | Extension of linear regression with L2 regularization — penalizes large coefficients to reduce overfitting. Particularly useful here because technical indicators (RSI, Bollinger Band position, distance from MA) are often correlated with each other. | RMSE | MAE, R² |
+| **XGBoost** | Gradient boosting ensemble that builds decision trees sequentially, each correcting the residual errors of the prior tree. Captures non-linear relationships between features and returns that linear models cannot, and provides feature importance scores. | RMSE | MAE, R² |
+
+### Classification Models
+Predict the **next-day price direction** — whether the stock will close higher (UP = 1) or lower (DOWN = 0) than today.
+
+| Model | Purpose | Primary Metric | Supporting Metrics |
+|---|---|---|---|
+| **Logistic Regression** | Baseline classifier. Models the probability of an UP move using a logistic curve. Simple and interpretable — log-odds coefficients show which features linearly push the prediction toward UP or DOWN. | F1 | Precision, Recall, Accuracy, Confusion Matrix |
+| **Random Forest** | Ensemble of decision trees that each vote independently on direction. More robust than a single tree; handles non-linear feature interactions and is less sensitive to noisy features. Provides feature importance scores based on how often each feature is used to split. | F1 | Precision, Recall, Accuracy, Confusion Matrix |
+
+---
+
 ## Results
 
-*To be completed after model training and evaluation.*
+Results are reported as **mean ± standard deviation** across all walk-forward folds. Standard deviation measures consistency — a lower value means the model performs reliably across different market conditions, not just in one favorable period.
+
+### SPY — Regression (5-day forward return)
+
+| Model | RMSE (mean ± std) | MAE (mean ± std) | R² (mean ± std) |
+|---|---|---|---|
+| Linear Regression | 0.032680 ± 0.023691 | 0.026165 ± 0.020355 | -2.4955 ± 3.8170 |
+| Ridge Regression | 0.029199 ± 0.020192 | 0.023036 ± 0.017339 | -1.6488 ± 2.6224 |
+| XGBoost | 0.025754 ± 0.012481 | 0.019259 ± 0.009262 | -1.0600 ± 1.0182 |
+
+### SPY — Classification (next-day direction)
+
+| Model | F1 (mean ± std) | Precision (mean ± std) | Recall (mean ± std) | Accuracy (mean ± std) |
+|---|---|---|---|---|
+| Logistic Regression | 0.4605 ± 0.0804 | 0.5752 ± 0.1335 | 0.5243 ± 0.0469 | 0.5423 ± 0.0881 |
+| Random Forest | 0.5094 ± 0.0733 | 0.5613 ± 0.0647 | 0.5505 ± 0.0498 | 0.5344 ± 0.0705 |
+
+### TSLA — Regression (5-day forward return)
+
+| Model | RMSE (mean ± std) | MAE (mean ± std) | R² (mean ± std) |
+|---|---|---|---|
+| Linear Regression | 0.117630 ± 0.048685 | 0.097380 ± 0.042914 | -1.5955 ± 1.5091 |
+| Ridge Regression | 0.112860 ± 0.047628 | 0.093590 ± 0.041686 | -1.3942 ± 1.4484 |
+| XGBoost | 0.106195 ± 0.031106 | 0.084940 ± 0.025590 | -1.2977 ± 1.3457 |
+
+### TSLA — Classification (next-day direction)
+
+| Model | F1 (mean ± std) | Precision (mean ± std) | Recall (mean ± std) | Accuracy (mean ± std) |
+|---|---|---|---|---|
+| Logistic Regression | 0.4439 ± 0.0970 | 0.4514 ± 0.1323 | 0.5123 ± 0.0390 | 0.5079 ± 0.0630 |
+| Random Forest | 0.4929 ± 0.0473 | 0.5222 ± 0.0425 | 0.5185 ± 0.0404 | 0.5053 ± 0.0426 |
+
+### Seasonal Breakdown
+
+Performance broken down by season (Spring: Mar–May, Summer: Jun–Aug, Fall: Sep–Nov, Winter: Dec–Feb) to identify which market periods are most predictable.
+
+#### SPY — Regression
+
+| Model | Season | RMSE | MAE | R² | n |
+|---|---|---|---|---|---|
+| Linear Regression | Spring | 0.082822 | 0.072579 | -3.7047 | 63 |
+| Linear Regression | Summer | 0.025874 | 0.021037 | -1.9116 | 80 |
+| Linear Regression | Fall | 0.021934 | 0.015780 | -0.8844 | 126 |
+| Linear Regression | Winter | 0.020531 | 0.015106 | -0.7362 | 109 |
+| Ridge Regression | Spring | 0.072096 | 0.062195 | -2.5650 | 63 |
+| Ridge Regression | Summer | 0.021907 | 0.017346 | -1.0873 | 80 |
+| Ridge Regression | Fall | 0.019774 | 0.014445 | -0.5315 | 126 |
+| Ridge Regression | Winter | 0.020126 | 0.014509 | -0.6684 | 109 |
+| XGBoost | Spring | 0.050827 | 0.039220 | -0.7719 | 63 |
+| XGBoost | Summer | 0.024837 | 0.018364 | -1.6830 | 80 |
+| XGBoost | Fall | 0.020643 | 0.014256 | -0.6691 | 126 |
+| XGBoost | Winter | 0.018489 | 0.014161 | -0.4080 | 109 |
+
+#### SPY — Classification
+
+| Model | Season | F1 | Precision | Recall | Accuracy | n |
+|---|---|---|---|---|---|---|
+| Logistic Regression | Spring | 0.3930 | 0.3957 | 0.3935 | 0.3968 | 63 |
+| Logistic Regression | Summer | 0.4264 | 0.4436 | 0.4648 | 0.5125 | 80 |
+| Logistic Regression | Fall | 0.5478 | 0.5713 | 0.5540 | 0.6190 | 126 |
+| Logistic Regression | Winter | 0.4871 | 0.6046 | 0.5497 | 0.5596 | 109 |
+| Random Forest | Spring | 0.4439 | 0.4574 | 0.4583 | 0.4444 | 63 |
+| Random Forest | Summer | 0.4617 | 0.4783 | 0.4789 | 0.4625 | 80 |
+| Random Forest | Fall | 0.5553 | 0.5562 | 0.5591 | 0.5714 | 126 |
+| Random Forest | Winter | 0.5775 | 0.6077 | 0.5910 | 0.5963 | 109 |
+
+#### TSLA — Regression
+
+| Model | Season | RMSE | MAE | R² | n |
+|---|---|---|---|---|---|
+| Linear Regression | Spring | 0.181320 | 0.153579 | -1.4741 | 63 |
+| Linear Regression | Summer | 0.085474 | 0.065566 | -1.2383 | 80 |
+| Linear Regression | Fall | 0.125973 | 0.090276 | -0.9983 | 126 |
+| Linear Regression | Winter | 0.112173 | 0.096461 | -1.2922 | 109 |
+| Ridge Regression | Spring | 0.170715 | 0.143752 | -1.1932 | 63 |
+| Ridge Regression | Summer | 0.079302 | 0.061654 | -0.9267 | 80 |
+| Ridge Regression | Fall | 0.123982 | 0.088431 | -0.9356 | 126 |
+| Ridge Regression | Winter | 0.109250 | 0.094000 | -1.1743 | 109 |
+| XGBoost | Spring | 0.127032 | 0.103329 | -0.2144 | 63 |
+| XGBoost | Summer | 0.100555 | 0.079171 | -2.0978 | 80 |
+| XGBoost | Fall | 0.115734 | 0.081984 | -0.6866 | 126 |
+| XGBoost | Winter | 0.099294 | 0.081961 | -0.7961 | 109 |
+
+#### TSLA — Classification
+
+| Model | Season | F1 | Precision | Recall | Accuracy | n |
+|---|---|---|---|---|---|---|
+| Logistic Regression | Spring | 0.4061 | 0.4388 | 0.4576 | 0.4444 | 63 |
+| Logistic Regression | Summer | 0.4591 | 0.5000 | 0.5000 | 0.5000 | 80 |
+| Logistic Regression | Fall | 0.4973 | 0.5078 | 0.5067 | 0.5317 | 126 |
+| Logistic Regression | Winter | 0.5080 | 0.5651 | 0.5516 | 0.5229 | 109 |
+| Random Forest | Spring | 0.4714 | 0.4808 | 0.4818 | 0.4762 | 63 |
+| Random Forest | Summer | 0.4972 | 0.5000 | 0.5000 | 0.5000 | 80 |
+| Random Forest | Fall | 0.5453 | 0.5466 | 0.5474 | 0.5476 | 126 |
+| Random Forest | Winter | 0.4771 | 0.4839 | 0.4839 | 0.4771 | 109 |
 
 ---
 

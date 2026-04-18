@@ -2,3 +2,5 @@
 .idea/
 secrets/
 .env
+.ipyb_checkpoints/
+stock_cache/.ipyb_checkpoints/
