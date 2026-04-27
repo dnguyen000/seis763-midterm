@@ -21,19 +21,16 @@ Comparing the two tickers reveals whether stability or volatility makes a stock 
 
 ## Data Source
 
-Historical daily stock price data is sourced from the **Polygon.io API** (formerly Massive):
-- https://polygon.io
-
-Data spans approximately **2 years** of trading days for both SPY and TSLA. Each trading day includes the following native attributes returned by the API:
+Historical daily stock price data is sourced from the **Yahoo Finance API (yfinance)**. Data spans **10 years** of trading days (2015–2024) for both SPY and TSLA (~2,515 rows each). Each trading day includes the following native attributes:
 
 | Attribute | Description |
 |---|---|
 | `open` | Price at market open |
 | `high` | Highest price of the day |
 | `low` | Lowest price of the day |
-| `close` | Price at market close |
+| `close` | Unadjusted price at market close |
+| `adj_close` | Dividend-adjusted closing price (relevant for SPY) |
 | `volume` | Number of shares traded |
-| `vwap` | Volume Weighted Average Price |
 
 From these attributes, additional features are derived (see Key Terms below).
 
@@ -57,7 +54,7 @@ From these attributes, additional features are derived (see Key Terms below).
 | **Volatility (20-day)** | The rolling standard deviation of daily returns over 20 days. Higher values mean more unpredictable price swings. |
 | **RSI (Relative Strength Index)** | A momentum indicator scaled 0–100. Values above 70 suggest a stock is overbought; below 30 suggests oversold. Calculated over 14 days. |
 | **Bollinger Band Position** | Where today's closing price sits within the Bollinger Bands, which are set 2 standard deviations above and below the 20-day moving average. Values near +1 or -1 suggest price is at the edge of its recent range. |
-| **VIX (CBOE Volatility Index)** | A real-time index published by the Chicago Board Options Exchange (CBOE) that measures the market's expectation of volatility over the next 30 days. It is derived from the implied volatility of S&P 500 options — when traders are willing to pay more for options (i.e., hedging against large swings), VIX rises. Often called the "fear gauge," VIX tends to spike sharply during crises and remain elevated until conditions stabilize. A VIX above 30 is a widely used threshold for heightened market stress. In this project, VIX daily closing prices are fetched from Polygon.io (`I:VIX`) and used to derive the extreme event indicator. |
+| **VIX (CBOE Volatility Index)** | A real-time index published by the Chicago Board Options Exchange (CBOE) that measures the market's expectation of volatility over the next 30 days. It is derived from the implied volatility of S&P 500 options — when traders are willing to pay more for options (i.e., hedging against large swings), VIX rises. Often called the "fear gauge," VIX tends to spike sharply during crises and remain elevated until conditions stabilize. A VIX above 30 is a widely used threshold for heightened market stress. In this project, VIX daily closing prices are fetched from Yahoo Finance (`^VIX`) and merged into the feature dataset to derive the extreme event indicator. |
 | **Extreme Event Indicator** | A boolean (True/False) flag marking trading days where the VIX closing price exceeded 30, indicating a period of elevated market fear or stress. Rather than hardcoding specific crash dates, this approach is data-driven: it automatically captures any shock period in the dataset where volatility was abnormally high. Helps the model distinguish genuine market disruptions from normal day-to-day noise. |
 | **SPY** | The SPDR S&P 500 ETF Trust. Tracks the S&P 500 index, representing 500 large U.S. companies. Used here as a stable market benchmark. |
 | **TSLA** | Tesla, Inc. A high-growth, high-volatility individual stock used here as a contrast to SPY. |
@@ -107,7 +104,7 @@ seis763-midterm/
 │   └── TSLA_features.csv
 ├── iteration1/                    # Iter 1: 63d/42d/0d embargo (~9 folds, Polygon 2yr)
 │   └── midterm-feature-engineered.ipynb
-├── iteration2/                    # Iter 2: 63d/21d/5d embargo (~58 folds, Yahoo 10yr)
+├── iteration2/                    # Iter 2: 63d/21d/5d embargo (~58 folds, Yahoo 10yr, volatility/3-class targets)
 │   ├── data-fetch.ipynb
 │   ├── spy_regression.ipynb
 │   ├── spy_classification.ipynb
@@ -208,31 +205,31 @@ Results are reported as **mean ± standard deviation** across all walk-forward f
 
 | Model | RMSE (mean ± std) | MAE (mean ± std) | R² (mean ± std) |
 |---|---|---|---|
-| Linear Regression | 0.032680 ± 0.023691 | 0.026165 ± 0.020355 | -2.4955 ± 3.8170 |
-| Ridge Regression | 0.029199 ± 0.020192 | 0.023036 ± 0.017339 | -1.6488 ± 2.6224 |
-| XGBoost | 0.025754 ± 0.012481 | 0.019259 ± 0.009262 | -1.0600 ± 1.0182 |
+| Linear Regression | 0.046746 ± 0.043586 | 0.039788 ± 0.039670 | -7.3697 ± 17.6612 |
+| Ridge Regression | 0.038625 ± 0.031501 | 0.032820 ± 0.027223 | -3.7942 ± 5.1318 |
+| XGBoost | 0.025687 ± 0.015471 | 0.020792 ± 0.013068 | -1.1520 ± 1.7512 |
 
 ### SPY — Classification (next-day direction)
 
 | Model | F1 (mean ± std) | Precision (mean ± std) | Recall (mean ± std) | Accuracy (mean ± std) |
 |---|---|---|---|---|
-| Logistic Regression | 0.4605 ± 0.0804 | 0.5752 ± 0.1335 | 0.5243 ± 0.0469 | 0.5423 ± 0.0881 |
-| Random Forest | 0.5094 ± 0.0733 | 0.5613 ± 0.0647 | 0.5505 ± 0.0498 | 0.5344 ± 0.0705 |
+| Logistic Regression | 0.4504 ± 0.0758 | 0.5100 ± 0.1291 | 0.5104 ± 0.0493 | 0.5131 ± 0.0640 |
+| Random Forest | 0.4752 ± 0.0888 | 0.5230 ± 0.1147 | 0.5242 ± 0.0618 | 0.5193 ± 0.0742 |
 
 ### TSLA — Regression (5-day forward return)
 
 | Model | RMSE (mean ± std) | MAE (mean ± std) | R² (mean ± std) |
 |---|---|---|---|
-| Linear Regression | 0.117630 ± 0.048685 | 0.097380 ± 0.042914 | -1.5955 ± 1.5091 |
-| Ridge Regression | 0.112860 ± 0.047628 | 0.093590 ± 0.041686 | -1.3942 ± 1.4484 |
-| XGBoost | 0.106195 ± 0.031106 | 0.084940 ± 0.025590 | -1.2977 ± 1.3457 |
+| Linear Regression | 0.180155 ± 0.133727 | 0.148816 ± 0.113479 | -9.2450 ± 26.4149 |
+| Ridge Regression | 0.141742 ± 0.091653 | 0.116481 ± 0.074755 | -5.5784 ± 18.6718 |
+| XGBoost | 0.098939 ± 0.037952 | 0.080180 ± 0.031703 | -1.2188 ± 1.8788 |
 
 ### TSLA — Classification (next-day direction)
 
 | Model | F1 (mean ± std) | Precision (mean ± std) | Recall (mean ± std) | Accuracy (mean ± std) |
 |---|---|---|---|---|
-| Logistic Regression | 0.4439 ± 0.0970 | 0.4514 ± 0.1323 | 0.5123 ± 0.0390 | 0.5079 ± 0.0630 |
-| Random Forest | 0.4929 ± 0.0473 | 0.5222 ± 0.0425 | 0.5185 ± 0.0404 | 0.5053 ± 0.0426 |
+| Logistic Regression | 0.4419 ± 0.0801 | 0.4888 ± 0.1133 | 0.4956 ± 0.0662 | 0.4889 ± 0.0732 |
+| Random Forest | 0.4706 ± 0.0947 | 0.5041 ± 0.1088 | 0.5092 ± 0.0749 | 0.4959 ± 0.0824 |
 
 ### Seasonal Breakdown
 
@@ -242,81 +239,81 @@ Performance broken down by season (Spring: Mar–May, Summer: Jun–Aug, Fall: S
 
 | Model | Season | RMSE | MAE | R² | n |
 |---|---|---|---|---|---|
-| Linear Regression | Spring | 0.082822 | 0.072579 | -3.7047 | 63 |
-| Linear Regression | Summer | 0.025874 | 0.021037 | -1.9116 | 80 |
-| Linear Regression | Fall | 0.021934 | 0.015780 | -0.8844 | 126 |
-| Linear Regression | Winter | 0.020531 | 0.015106 | -0.7362 | 109 |
-| Ridge Regression | Spring | 0.072096 | 0.062195 | -2.5650 | 63 |
-| Ridge Regression | Summer | 0.021907 | 0.017346 | -1.0873 | 80 |
-| Ridge Regression | Fall | 0.019774 | 0.014445 | -0.5315 | 126 |
-| Ridge Regression | Winter | 0.020126 | 0.014509 | -0.6684 | 109 |
-| XGBoost | Spring | 0.050827 | 0.039220 | -0.7719 | 63 |
-| XGBoost | Summer | 0.024837 | 0.018364 | -1.6830 | 80 |
-| XGBoost | Fall | 0.020643 | 0.014256 | -0.6691 | 126 |
-| XGBoost | Winter | 0.018489 | 0.014161 | -0.4080 | 109 |
+| Linear Regression | Spring | 0.092157 | 0.052875 | -10.6226 | 614 |
+| Linear Regression | Summer | 0.041837 | 0.027507 | -3.1596 | 645 |
+| Linear Regression | Fall | 0.057760 | 0.042358 | -6.4654 | 630 |
+| Linear Regression | Winter | 0.051051 | 0.036619 | -3.9252 | 547 |
+| Ridge Regression | Spring | 0.065665 | 0.039937 | -4.9008 | 614 |
+| Ridge Regression | Summer | 0.031317 | 0.020692 | -1.3307 | 645 |
+| Ridge Regression | Fall | 0.046231 | 0.034979 | -3.7826 | 630 |
+| Ridge Regression | Winter | 0.050289 | 0.036646 | -3.7792 | 547 |
+| XGBoost | Spring | 0.036870 | 0.024579 | -0.8603 | 614 |
+| XGBoost | Summer | 0.023889 | 0.016135 | -0.3562 | 645 |
+| XGBoost | Fall | 0.026540 | 0.019682 | -0.5762 | 630 |
+| XGBoost | Winter | 0.031240 | 0.023309 | -0.8443 | 547 |
 
 #### SPY — Classification
 
 | Model | Season | F1 | Precision | Recall | Accuracy | n |
 |---|---|---|---|---|---|---|
-| Logistic Regression | Spring | 0.3930 | 0.3957 | 0.3935 | 0.3968 | 63 |
-| Logistic Regression | Summer | 0.4264 | 0.4436 | 0.4648 | 0.5125 | 80 |
-| Logistic Regression | Fall | 0.5478 | 0.5713 | 0.5540 | 0.6190 | 126 |
-| Logistic Regression | Winter | 0.4871 | 0.6046 | 0.5497 | 0.5596 | 109 |
-| Random Forest | Spring | 0.4439 | 0.4574 | 0.4583 | 0.4444 | 63 |
-| Random Forest | Summer | 0.4617 | 0.4783 | 0.4789 | 0.4625 | 80 |
-| Random Forest | Fall | 0.5553 | 0.5562 | 0.5591 | 0.5714 | 126 |
-| Random Forest | Winter | 0.5775 | 0.6077 | 0.5910 | 0.5963 | 109 |
+| Logistic Regression | Spring | 0.5072 | 0.5084 | 0.5082 | 0.5130 | 614 |
+| Logistic Regression | Summer | 0.5254 | 0.5260 | 0.5255 | 0.5380 | 645 |
+| Logistic Regression | Fall | 0.4824 | 0.4835 | 0.4839 | 0.4921 | 630 |
+| Logistic Regression | Winter | 0.5058 | 0.5064 | 0.5065 | 0.5082 | 547 |
+| Random Forest | Spring | 0.4954 | 0.4966 | 0.4967 | 0.5016 | 614 |
+| Random Forest | Summer | 0.5472 | 0.5475 | 0.5483 | 0.5519 | 645 |
+| Random Forest | Fall | 0.5168 | 0.5168 | 0.5168 | 0.5206 | 630 |
+| Random Forest | Winter | 0.4989 | 0.5024 | 0.5024 | 0.4991 | 547 |
 
 #### TSLA — Regression
 
 | Model | Season | RMSE | MAE | R² | n |
 |---|---|---|---|---|---|
-| Linear Regression | Spring | 0.181320 | 0.153579 | -1.4741 | 63 |
-| Linear Regression | Summer | 0.085474 | 0.065566 | -1.2383 | 80 |
-| Linear Regression | Fall | 0.125973 | 0.090276 | -0.9983 | 126 |
-| Linear Regression | Winter | 0.112173 | 0.096461 | -1.2922 | 109 |
-| Ridge Regression | Spring | 0.170715 | 0.143752 | -1.1932 | 63 |
-| Ridge Regression | Summer | 0.079302 | 0.061654 | -0.9267 | 80 |
-| Ridge Regression | Fall | 0.123982 | 0.088431 | -0.9356 | 126 |
-| Ridge Regression | Winter | 0.109250 | 0.094000 | -1.1743 | 109 |
-| XGBoost | Spring | 0.127032 | 0.103329 | -0.2144 | 63 |
-| XGBoost | Summer | 0.100555 | 0.079171 | -2.0978 | 80 |
-| XGBoost | Fall | 0.115734 | 0.081984 | -0.6866 | 126 |
-| XGBoost | Winter | 0.099294 | 0.081961 | -0.7961 | 109 |
+| Linear Regression | Spring | 0.255684 | 0.156681 | -7.1846 | 614 |
+| Linear Regression | Summer | 0.148652 | 0.112104 | -2.4948 | 645 |
+| Linear Regression | Fall | 0.236881 | 0.159765 | -7.4761 | 630 |
+| Linear Regression | Winter | 0.242365 | 0.170668 | -6.4516 | 547 |
+| Ridge Regression | Spring | 0.180667 | 0.116596 | -3.0864 | 614 |
+| Ridge Regression | Summer | 0.120029 | 0.090305 | -1.2785 | 645 |
+| Ridge Regression | Fall | 0.182450 | 0.126846 | -4.0283 | 630 |
+| Ridge Regression | Winter | 0.185123 | 0.135280 | -3.3474 | 547 |
+| XGBoost | Spring | 0.113865 | 0.085752 | -0.6232 | 614 |
+| XGBoost | Summer | 0.097977 | 0.075088 | -0.5182 | 645 |
+| XGBoost | Fall | 0.101042 | 0.077849 | -0.5422 | 630 |
+| XGBoost | Winter | 0.110753 | 0.082614 | -0.5560 | 547 |
 
 #### TSLA — Classification
 
 | Model | Season | F1 | Precision | Recall | Accuracy | n |
 |---|---|---|---|---|---|---|
-| Logistic Regression | Spring | 0.4061 | 0.4388 | 0.4576 | 0.4444 | 63 |
-| Logistic Regression | Summer | 0.4591 | 0.5000 | 0.5000 | 0.5000 | 80 |
-| Logistic Regression | Fall | 0.4973 | 0.5078 | 0.5067 | 0.5317 | 126 |
-| Logistic Regression | Winter | 0.5080 | 0.5651 | 0.5516 | 0.5229 | 109 |
-| Random Forest | Spring | 0.4714 | 0.4808 | 0.4818 | 0.4762 | 63 |
-| Random Forest | Summer | 0.4972 | 0.5000 | 0.5000 | 0.5000 | 80 |
-| Random Forest | Fall | 0.5453 | 0.5466 | 0.5474 | 0.5476 | 126 |
-| Random Forest | Winter | 0.4771 | 0.4839 | 0.4839 | 0.4771 | 109 |
+| Logistic Regression | Spring | 0.4788 | 0.4792 | 0.4792 | 0.4788 | 614 |
+| Logistic Regression | Summer | 0.4821 | 0.4846 | 0.4846 | 0.4822 | 645 |
+| Logistic Regression | Fall | 0.4795 | 0.4835 | 0.4844 | 0.4921 | 630 |
+| Logistic Regression | Winter | 0.5040 | 0.5089 | 0.5088 | 0.5046 | 547 |
+| Random Forest | Spring | 0.4801 | 0.4816 | 0.4817 | 0.4805 | 614 |
+| Random Forest | Summer | 0.4863 | 0.4907 | 0.4908 | 0.4868 | 645 |
+| Random Forest | Fall | 0.5050 | 0.5064 | 0.5063 | 0.5111 | 630 |
+| Random Forest | Winter | 0.5060 | 0.5103 | 0.5102 | 0.5064 | 547 |
 
 ---
 
 ## Validating and Interpreting Results — First Iteration
 
-The first iteration used the **Polygon/Massive API** dataset (~476 rows, 2024–2026, 10 features) evaluated with 9 walk-forward folds. Results are sourced from `midterm.ipynb`.
+The first iteration used the **Yahoo Finance** dataset (~2,510 rows, 2015–2024, 19 features) evaluated with 58 walk-forward folds. Results are sourced from `midterm-feature-engineered.ipynb`.
 
 ### EDA Visuals
 
 **VIX Volatility Index (2015–2025)**
 
-![VIX Time Series](img/vix_timeseries.png)
+![VIX Time Series](iteration1/img/vix_timeseries.png)
 
-Three distinct stress periods are visible: the 2018 Volmageddon spike (~37), the Q4 2018 Fed rate-hike sell-off, and the COVID crash in March 2020 (peak ~82.69). The red shaded regions mark days where VIX exceeded 30 — the threshold used for `is_major_event`. In the 10-year window, 144+ trading days exceeded this threshold. In the 2-year Polygon window used for first-iteration modeling, only 15 days crossed it.
+Three distinct stress periods are visible: the 2018 Volmageddon spike (~37), the Q4 2018 Fed rate-hike sell-off, and the COVID crash in March 2020 (peak ~82.69). The red shaded regions mark days where VIX exceeded 30 — the threshold used for `is_major_event`. In the 10-year Yahoo Finance window used across all iterations, 144 trading days exceeded this threshold.
 
 ---
 
 **Close Price Over Time**
 
-![Close Price](img/close_price.png)
+![Close Price](iteration1/img/close_price.png)
 
 SPY (blue) shows steady growth from ~$170 (adjusted) in 2015 to ~$570+ by 2025, with only the COVID crash producing a visible dip. TSLA (red) was flat through 2019, then surged dramatically in 2020–2022 before crashing into 2023 and recovering post-election in late 2024. TSLA's price range (~$14 → $400+) is roughly 30× wider than SPY's, directly reflected in its higher RMSE in regression.
 
@@ -324,7 +321,7 @@ SPY (blue) shows steady growth from ~$170 (adjusted) in 2015 to ~$570+ by 2025, 
 
 **Volume Over Time**
 
-![Volume](img/volume.png)
+![Volume](iteration1/img/volume.png)
 
 Both tickers show volume spikes aligned with VIX > 30 periods. SPY's COVID crash spike reached ~500M shares/day (6× average). TSLA's 2020–2021 meme-stock era spike reached ~900M shares/day (8× average). High-volume days are captured by `is_major_event` and `volume_ratio`.
 
@@ -332,7 +329,7 @@ Both tickers show volume spikes aligned with VIX > 30 periods. SPY's COVID crash
 
 **SPY vs TSLA Correlation**
 
-![SPY vs TSLA Correlation](img/spy_tsla_correlation.png)
+![SPY vs TSLA Correlation](iteration1/img/spy_tsla_correlation.png)
 
 Correlation ~0.87, driven primarily by shared long-term upward trend rather than daily co-movement. The scatter plot shows distinct market era clusters: TSLA flat and low through 2019, explosive divergence in 2020–2022, and erratic high-price behavior in recent years. This validates the decision to model each ticker independently.
 
@@ -340,15 +337,15 @@ Correlation ~0.87, driven primarily by shared long-term upward trend rather than
 
 **VIX vs Daily Returns**
 
-![VIX vs Returns](img/vix_vs_returns.png)
+![VIX vs Returns](iteration1/img/vix_vs_returns.png)
 
-During normal periods (VIX < 30), SPY has a mean daily return of ~+0.06% with std ~0.8%. During VIX > 30 periods, the mean flips to ~-0.05% with std ~2.1% — more than double the volatility. TSLA shows the same pattern at ~2.3× the magnitude. This confirms that market stress regime is a meaningful signal, but the 2-year Polygon dataset had too few stress days (15) for the model to learn from it.
+During normal periods (VIX < 30), SPY has a mean daily return of ~+0.06% with std ~0.8%. During VIX > 30 periods, the mean flips to ~-0.05% with std ~2.1% — more than double the volatility. TSLA shows the same pattern at ~2.3× the magnitude. This confirms that market stress regime is a meaningful signal, and with 144 stress days across the 10-year dataset, the models have sufficient exposure to learn from it.
 
 ---
 
 **VIX Level vs Mean Daily Return (Binned)**
 
-![VIX Binned Returns](img/vix_binned_returns.png)
+![VIX Binned Returns](iteration1/img/vix_binned_returns.png)
 
 A clear monotonic relationship: as VIX rises, average daily returns fall. Calm markets (VIX < 15) produce the highest average returns; VIX > 30 produces negative average returns. This signal is real and consistent across both data sources, but it only helps the model during the relatively rare stress periods.
 
@@ -356,7 +353,7 @@ A clear monotonic relationship: as VIX rises, average daily returns fall. Calm m
 
 **Average Daily Return by Month**
 
-![Monthly Returns](img/monthly_returns.png)
+![Monthly Returns](iteration1/img/monthly_returns.png)
 
 September is the weakest month for both tickers (the well-documented "September Effect"). November is among the strongest. This monthly pattern is consistent across Yahoo Finance and Polygon datasets and is directly reflected in the seasonal breakdown results below.
 
@@ -370,31 +367,31 @@ All regression R² values are negative, meaning no model beats a naive "predict 
 
 | Model | RMSE (mean ± std) | R² (mean ± std) |
 |---|---|---|
-| Linear Regression | 0.0327 ± 0.0237 | -2.496 ± 3.817 |
-| Ridge Regression | 0.0292 ± 0.0202 | -1.649 ± 2.622 |
-| **XGBoost** | **0.0258 ± 0.0125** | **-1.060 ± 1.018** |
+| Linear Regression | 0.046746 ± 0.043586 | -7.3697 ± 17.6612 |
+| Ridge Regression | 0.038625 ± 0.031501 | -3.7942 ± 5.1318 |
+| **XGBoost** | **0.025687 ± 0.015471** | **-1.1520 ± 1.7512** |
 
 #### SPY — Classification
 
 | Model | F1 (mean ± std) | Accuracy (mean ± std) |
 |---|---|---|
-| Logistic Regression | 0.4605 ± 0.0804 | 0.5423 ± 0.0881 |
-| **Random Forest** | **0.5094 ± 0.0733** | **0.5344 ± 0.0705** |
+| Logistic Regression | 0.4504 ± 0.0758 | 0.5131 ± 0.0640 |
+| **Random Forest** | **0.4752 ± 0.0888** | **0.5193 ± 0.0742** |
 
 #### TSLA — Regression
 
 | Model | RMSE (mean ± std) | R² (mean ± std) |
 |---|---|---|
-| Linear Regression | 0.1176 ± 0.0487 | -1.596 ± 1.509 |
-| Ridge Regression | 0.1129 ± 0.0476 | -1.394 ± 1.448 |
-| **XGBoost** | **0.1062 ± 0.0311** | **-1.298 ± 1.346** |
+| Linear Regression | 0.180155 ± 0.133727 | -9.2450 ± 26.4149 |
+| Ridge Regression | 0.141742 ± 0.091653 | -5.5784 ± 18.6718 |
+| **XGBoost** | **0.098939 ± 0.037952** | **-1.2188 ± 1.8788** |
 
 #### TSLA — Classification
 
 | Model | F1 (mean ± std) | Accuracy (mean ± std) |
 |---|---|---|
-| Logistic Regression | 0.4439 ± 0.0970 | 0.5079 ± 0.0630 |
-| **Random Forest** | **0.4929 ± 0.0473** | **0.5053 ± 0.0426** |
+| Logistic Regression | 0.4419 ± 0.0801 | 0.4889 ± 0.0732 |
+| **Random Forest** | **0.4706 ± 0.0947** | **0.4959 ± 0.0824** |
 
 **XGBoost** was the best regression model for both tickers. **Random Forest** was the best classification model for both tickers.
 
@@ -402,7 +399,67 @@ All regression R² values are negative, meaning no model beats a naive "predict 
 
 ### Seasonal Highlights
 
-Fall (Sep–Nov) had the largest sample size (n=126) and was the most predictable season for regression across all models and both tickers. Spring (Mar–May) was consistently the hardest to predict — highest RMSE and lowest F1 in all configurations. Winter was the second-most predictable season for SPY classification (Random Forest F1: 0.5775).
+All seasons have comparable sample sizes (~600 observations each) across the 58-fold walk-forward evaluation. **Summer (Jun–Aug) was the most predictable season for regression** — XGBoost achieved its lowest RMSE in Summer for both SPY (0.0239) and TSLA (0.0980). **Spring (Mar–May) was consistently the hardest to predict** — highest RMSE and worst R² for SPY across all models. For classification, **Summer was the best season for SPY** (Random Forest F1: 0.5472), while **Winter was the best season for TSLA** (Random Forest F1: 0.5060).
+
+#### SPY — Seasonal Regression Breakdown
+
+| Model | Season | RMSE | MAE | R² | n |
+|---|---|---|---|---|---|
+| Linear Regression | Spring | 0.092157 | 0.052875 | -10.6226 | 614 |
+| Linear Regression | Summer | 0.041837 | 0.027507 | -3.1596 | 645 |
+| Linear Regression | Fall | 0.057760 | 0.042358 | -6.4654 | 630 |
+| Linear Regression | Winter | 0.051051 | 0.036619 | -3.9252 | 547 |
+| Ridge Regression | Spring | 0.065665 | 0.039937 | -4.9008 | 614 |
+| **Ridge Regression** | **Summer** | **0.031317** | **0.020692** | **-1.3307** | **645** |
+| Ridge Regression | Fall | 0.046231 | 0.034979 | -3.7826 | 630 |
+| Ridge Regression | Winter | 0.050289 | 0.036646 | -3.7792 | 547 |
+| XGBoost | Spring | 0.036870 | 0.024579 | -0.8603 | 614 |
+| **XGBoost** | **Summer** | **0.023889** | **0.016135** | **-0.3562** | **645** |
+| XGBoost | Fall | 0.026540 | 0.019682 | -0.5762 | 630 |
+| XGBoost | Winter | 0.031240 | 0.023309 | -0.8443 | 547 |
+
+#### SPY — Seasonal Classification Breakdown
+
+| Model | Season | F1 | Precision | Recall | Accuracy | n |
+|---|---|---|---|---|---|---|
+| Logistic Regression | Spring | 0.5072 | 0.5084 | 0.5082 | 0.5130 | 614 |
+| **Logistic Regression** | **Summer** | **0.5254** | **0.5260** | **0.5255** | **0.5380** | **645** |
+| Logistic Regression | Fall | 0.4824 | 0.4835 | 0.4839 | 0.4921 | 630 |
+| Logistic Regression | Winter | 0.5058 | 0.5064 | 0.5065 | 0.5082 | 547 |
+| Random Forest | Spring | 0.4954 | 0.4966 | 0.4967 | 0.5016 | 614 |
+| **Random Forest** | **Summer** | **0.5472** | **0.5475** | **0.5483** | **0.5519** | **645** |
+| Random Forest | Fall | 0.5168 | 0.5168 | 0.5168 | 0.5206 | 630 |
+| Random Forest | Winter | 0.4989 | 0.5024 | 0.5024 | 0.4991 | 547 |
+
+#### TSLA — Seasonal Regression Breakdown
+
+| Model | Season | RMSE | MAE | R² | n |
+|---|---|---|---|---|---|
+| Linear Regression | Spring | 0.255684 | 0.156681 | -7.1846 | 614 |
+| **Linear Regression** | **Summer** | **0.148652** | **0.112104** | **-2.4948** | **645** |
+| Linear Regression | Fall | 0.236881 | 0.159765 | -7.4761 | 630 |
+| Linear Regression | Winter | 0.242365 | 0.170668 | -6.4516 | 547 |
+| Ridge Regression | Spring | 0.180667 | 0.116596 | -3.0864 | 614 |
+| **Ridge Regression** | **Summer** | **0.120029** | **0.090305** | **-1.2785** | **645** |
+| Ridge Regression | Fall | 0.182450 | 0.126846 | -4.0283 | 630 |
+| Ridge Regression | Winter | 0.185123 | 0.135280 | -3.3474 | 547 |
+| XGBoost | Spring | 0.113865 | 0.085752 | -0.6232 | 614 |
+| **XGBoost** | **Summer** | **0.097977** | **0.075088** | **-0.5182** | **645** |
+| XGBoost | Fall | 0.101042 | 0.077849 | -0.5422 | 630 |
+| XGBoost | Winter | 0.110753 | 0.082614 | -0.5560 | 547 |
+
+#### TSLA — Seasonal Classification Breakdown
+
+| Model | Season | F1 | Precision | Recall | Accuracy | n |
+|---|---|---|---|---|---|---|
+| Logistic Regression | Spring | 0.4788 | 0.4792 | 0.4792 | 0.4788 | 614 |
+| Logistic Regression | Summer | 0.4821 | 0.4846 | 0.4846 | 0.4822 | 645 |
+| Logistic Regression | Fall | 0.4795 | 0.4835 | 0.4844 | 0.4921 | 630 |
+| **Logistic Regression** | **Winter** | **0.5040** | **0.5089** | **0.5088** | **0.5046** | **547** |
+| Random Forest | Spring | 0.4801 | 0.4816 | 0.4817 | 0.4805 | 614 |
+| Random Forest | Summer | 0.4863 | 0.4907 | 0.4908 | 0.4868 | 645 |
+| Random Forest | Fall | 0.5050 | 0.5064 | 0.5063 | 0.5111 | 630 |
+| **Random Forest** | **Winter** | **0.5060** | **0.5103** | **0.5102** | **0.5064** | **547** |
 
 ---
 
@@ -416,9 +473,9 @@ Fall (Sep–Nov) had the largest sample size (n=126) and was the most predictabl
 
 `target_direction` (binary UP/DOWN) forces the model to classify every price move — including sub-0.5% moves that are indistinguishable from microstructure noise. The model is penalized equally for missing a 0.01% move and a 3% move. A softened target that filters out small moves would give the model cleaner signal on days where a genuine trend is present.
 
-**3. `is_major_event` had zero coefficient weight**
+**3. `is_major_event` coefficient weight is modest but non-zero**
 
-The Polygon 2-year window (2024–2026) contained only 15 trading days with VIX > 30. This was insufficient for any model to learn the stress-regime signal. The 10-year Yahoo Finance dataset (2015–2025) contains 144+ such days, making this feature meaningful in the second iteration.
+The 10-year Yahoo Finance dataset (2015–2024) contains 144 trading days with VIX > 30, giving models sufficient exposure to the stress regime. Unlike a shorter 2-year window where only 15 such days appeared, the coefficient for `is_major_event` is now non-trivial. However, it remains a minor contributor because stress days are still only ~5.7% of the sample — the feature drives behavior in rare windows rather than persistently across folds.
 
 **4. Feature redundancy**
 
@@ -426,7 +483,7 @@ The second feature set (19 features) included correlated features: `macd`, `macd
 
 **5. High variance across folds**
 
-Standard deviation exceeded the mean for Linear Regression on SPY (std 0.0557 vs mean 0.0482), indicating the model performs well in some market regimes and fails badly in others. XGBoost was the most consistent (std ~40–50% of mean). Increasing the training window from 63 to 252 days would reduce this variance by exposing each fold to a more representative market history.
+Standard deviation approached the mean for Linear Regression on SPY (std 0.043586 vs mean 0.046746 — 93% of the mean), indicating high instability across folds. XGBoost was the most consistent (std ~60% of mean: 0.015471 vs 0.025687). Increasing the training window from 63 to 252 days would reduce this variance by exposing each fold to a more representative market history.
 
 ---
 
@@ -438,8 +495,9 @@ The second iteration addresses the challenges identified above. Full details and
 
 | Area | First Iteration | Second Iteration |
 |---|---|---|
-| Data source | Polygon API (~476 rows, 2 years) | Yahoo Finance (~2,490 rows, 10 years) |
-| Features | 10 features (includes `vwap_dist`) | 16 features (removes 3 redundant; no `vwap_dist`) |
+| Data source | Yahoo Finance (~2,510 rows, 10 years) | Yahoo Finance (~2,490 rows, 10 years) |
+| Notebook | `midterm-feature-engineered.ipynb` | `spy_regression.ipynb`, `tsla_regression.ipynb`, etc. |
+| Features | 19 features (includes redundant MACD trio) | 16 features (removes 3 redundant; no `vwap_dist`) |
 | Classification target | Binary UP/DOWN on every move | 3-class: UP / FLAT / DOWN (±0.5% SPY, ±1.5% TSLA) |
 | Regression target | 5-day forward return (near-random-walk) | 5-day forward realized volatility (features better aligned) |
 | Walk-forward window | 63 train / 42 test / no embargo | 63 train / 21 test / 5-day embargo |
@@ -476,23 +534,35 @@ Results are from `spy_modeling.ipynb` and `tsla_modeling.ipynb`, evaluated with 
 | **Logistic Regression** | **0.3288 ± 0.0742** | **0.3542 ± 0.1313** | **0.3772 ± 0.0710** | **0.5107 ± 0.1509** |
 | Random Forest | 0.3410 ± 0.0643 | 0.3740 ± 0.1085 | 0.3807 ± 0.0653 | 0.4963 ± 0.1385 |
 
-#### SPY — Seasonal Breakdown (Regression — XGBoost)
+#### SPY — Seasonal Regression Breakdown
 
-| Season | RMSE | MAE | R² | n |
-|---|---|---|---|---|
-| Spring | 0.011374 | 0.005740 | -0.1112 | 614 |
-| Summer | 0.006143 | 0.004114 | -0.2865 | 645 |
-| **Fall** | **0.004975** | **0.003751** | **+0.1192** | 630 |
-| Winter | 0.006548 | 0.004710 | -0.3181 | 547 |
-
-#### SPY — Seasonal Breakdown (Classification — Random Forest)
-
-| Season | F1 | Precision | Recall | Accuracy | n |
+| Model | Season | RMSE | MAE | R² | n |
 |---|---|---|---|---|---|
-| Spring | 0.4136 | 0.4129 | 0.4151 | 0.4609 | 614 |
-| Summer | 0.4127 | 0.4204 | 0.4208 | 0.5349 | 645 |
-| **Fall** | **0.4350** | **0.4375** | **0.4357** | **0.5222** | 630 |
-| Winter | 0.3992 | 0.4012 | 0.4020 | 0.4607 | 547 |
+| **Linear Regression** | **Spring** | **0.012118** | **0.007398** | **-0.2613** | **614** |
+| Linear Regression | Summer | 0.007845 | 0.005109 | -1.0980 | 645 |
+| Linear Regression | Fall | 0.008298 | 0.006150 | -1.4505 | 630 |
+| Linear Regression | Winter | 0.009174 | 0.006248 | -1.5873 | 547 |
+| **Ridge Regression** | **Spring** | **0.011885** | **0.006923** | **-0.2132** | **614** |
+| Ridge Regression | Summer | 0.007080 | 0.004424 | -0.7087 | 645 |
+| Ridge Regression | Fall | 0.007028 | 0.005100 | -0.7577 | 630 |
+| Ridge Regression | Winter | 0.010952 | 0.006300 | -2.6877 | 547 |
+| XGBoost | Spring | 0.011374 | 0.005740 | -0.1112 | 614 |
+| XGBoost | Summer | 0.006143 | 0.004114 | -0.2865 | 645 |
+| **XGBoost** | **Fall** | **0.004975** | **0.003751** | **+0.1192** | **630** |
+| XGBoost | Winter | 0.006548 | 0.004710 | -0.3181 | 547 |
+
+#### SPY — Seasonal Classification Breakdown
+
+| Model | Season | F1 | Precision | Recall | Accuracy | n |
+|---|---|---|---|---|---|---|
+| Logistic Regression | Spring | 0.3935 | 0.3914 | 0.3977 | 0.4560 | 614 |
+| **Logistic Regression** | **Summer** | **0.4139** | **0.4246** | **0.4319** | **0.5628** | **645** |
+| Logistic Regression | Fall | 0.4087 | 0.4201 | 0.4188 | 0.5317 | 630 |
+| Logistic Regression | Winter | 0.4048 | 0.4196 | 0.4131 | 0.4863 | 547 |
+| Random Forest | Spring | 0.4136 | 0.4129 | 0.4151 | 0.4609 | 614 |
+| Random Forest | Summer | 0.4127 | 0.4204 | 0.4208 | 0.5349 | 645 |
+| **Random Forest** | **Fall** | **0.4350** | **0.4375** | **0.4357** | **0.5222** | **630** |
+| Random Forest | Winter | 0.3992 | 0.4012 | 0.4020 | 0.4607 | 547 |
 
 ---
 
@@ -511,23 +581,35 @@ Results are from `spy_modeling.ipynb` and `tsla_modeling.ipynb`, evaluated with 
 | Logistic Regression | 0.2951 ± 0.0692 | 0.3337 ± 0.1114 | 0.3521 ± 0.0564 | 0.3941 ± 0.1047 |
 | Random Forest | 0.2946 ± 0.0824 | 0.3300 ± 0.1191 | 0.3326 ± 0.0752 | 0.3810 ± 0.1122 |
 
-#### TSLA — Seasonal Breakdown (Regression — XGBoost)
+#### TSLA — Seasonal Regression Breakdown
 
-| Season | RMSE | MAE | R² | n |
-|---|---|---|---|---|
-| Spring | 0.024517 | 0.016258 | -0.6010 | 614 |
-| Summer | 0.017845 | 0.014056 | -0.3097 | 645 |
-| Fall | 0.023631 | 0.016905 | -0.4527 | 630 |
-| Winter | 0.022837 | 0.015022 | -0.3828 | 547 |
-
-#### TSLA — Seasonal Breakdown (Classification — Random Forest)
-
-| Season | F1 | Precision | Recall | Accuracy | n |
+| Model | Season | RMSE | MAE | R² | n |
 |---|---|---|---|---|---|
-| Spring | 0.3432 | 0.3456 | 0.3461 | 0.3648 | 614 |
-| Summer | 0.3554 | 0.3570 | 0.3566 | 0.3953 | 645 |
-| Fall | 0.3488 | 0.3492 | 0.3573 | 0.3968 | 630 |
-| Winter | 0.3247 | 0.3251 | 0.3294 | 0.3638 | 547 |
+| Linear Regression | Spring | 0.044576 | 0.027556 | -4.2929 | 614 |
+| Linear Regression | Summer | 0.034284 | 0.023363 | -3.8344 | 645 |
+| **Linear Regression** | **Fall** | **0.031809** | **0.023629** | **-1.6322** | **630** |
+| Linear Regression | Winter | 0.038081 | 0.024617 | -2.8449 | 547 |
+| Ridge Regression | Spring | 0.033649 | 0.023226 | -2.0160 | 614 |
+| Ridge Regression | Summer | 0.025589 | 0.019108 | -1.6930 | 645 |
+| Ridge Regression | Fall | 0.027318 | 0.020433 | -0.9414 | 630 |
+| **Ridge Regression** | **Winter** | **0.025312** | **0.017602** | **-0.6988** | **547** |
+| XGBoost | Spring | 0.024517 | 0.016258 | -0.6010 | 614 |
+| **XGBoost** | **Summer** | **0.017845** | **0.014056** | **-0.3097** | **645** |
+| XGBoost | Fall | 0.023631 | 0.016905 | -0.4527 | 630 |
+| XGBoost | Winter | 0.022837 | 0.015022 | -0.3828 | 547 |
+
+#### TSLA — Seasonal Classification Breakdown
+
+| Model | Season | F1 | Precision | Recall | Accuracy | n |
+|---|---|---|---|---|---|---|
+| Logistic Regression | Spring | 0.3459 | 0.3507 | 0.3498 | 0.3713 | 614 |
+| Logistic Regression | Summer | 0.3231 | 0.3280 | 0.3344 | 0.3922 | 645 |
+| **Logistic Regression** | **Fall** | **0.3605** | **0.3788** | **0.3756** | **0.4302** | **630** |
+| Logistic Regression | Winter | 0.3400 | 0.3469 | 0.3442 | 0.3803 | 547 |
+| Random Forest | Spring | 0.3432 | 0.3456 | 0.3461 | 0.3648 | 614 |
+| **Random Forest** | **Summer** | **0.3554** | **0.3570** | **0.3566** | **0.3953** | **645** |
+| Random Forest | Fall | 0.3488 | 0.3492 | 0.3573 | 0.3968 | 630 |
+| Random Forest | Winter | 0.3247 | 0.3251 | 0.3294 | 0.3638 | 547 |
 
 ---
 
@@ -539,10 +621,10 @@ The 3-class target (±0.5% SPY, ±1.5% TSLA) filters out small, noisy moves and 
 
 | Ticker | Model | 1st Iter F1 (binary) | 2nd Iter F1 (3-class) | Baseline |
 |---|---|---|---|---|
-| SPY | Logistic Regression | 0.4605 | 0.3288 | ~0.33 |
-| SPY | Random Forest | 0.5094 | 0.3410 | ~0.33 |
-| TSLA | Logistic Regression | 0.4439 | 0.2951 | ~0.33 |
-| TSLA | Random Forest | 0.4929 | 0.2946 | ~0.33 |
+| SPY | Logistic Regression | 0.4504 | 0.3288 | ~0.33 |
+| SPY | Random Forest | 0.4752 | 0.3410 | ~0.33 |
+| TSLA | Logistic Regression | 0.4419 | 0.2951 | ~0.33 |
+| TSLA | Random Forest | 0.4706 | 0.2946 | ~0.33 |
 
 SPY Random Forest's 0.3410 F1 sits just above the 0.33 random baseline, with the strongest performance in Fall (F1 0.4350). TSLA models struggle to clear the baseline — the added FLAT class is harder to identify for a high-volatility stock.
 
@@ -552,18 +634,18 @@ Targets changed (`target_return` → `target_volatility`), so RMSE values are no
 
 | Ticker | Model | 1st Iter R² | 2nd Iter R² |
 |---|---|---|---|
-| SPY | XGBoost | -1.0600 ± 1.0182 | -1.8470 ± 3.1703 |
-| TSLA | XGBoost | -1.2977 ± 1.3457 | -1.3240 ± 1.5718 |
+| SPY | XGBoost | -1.1520 ± 1.7512 | -1.8470 ± 3.1703 |
+| TSLA | XGBoost | -1.2188 ± 1.8788 | -1.3240 ± 1.5718 |
 
 R² remains negative overall, but **SPY XGBoost achieves R² = +0.1192 in Fall** — the only positive R² in either iteration, meaning the model outperforms the naive mean baseline in that season. This is a meaningful improvement: Fall is the most stable and data-rich season (n=630), and the volatility target is better aligned with the technical features than the raw return target was.
 
 #### Key findings
 
 1. **XGBoost is consistently the best regression model** across both tickers and both iterations. Its RMSE standard deviation is roughly 50–60% of its mean (vs. 100%+ for linear models), making it the most consistent across market regimes.
-2. **Fall is the most predictable season** for regression in both iterations. SPY XGBoost achieves the only positive R² (0.1192) in Fall — the 10-year dataset gives the model enough examples of fall volatility patterns to generalize.
-3. **Volatility is more learnable than return direction** — the volatility target's negative R² values are smaller in magnitude than those of the return target for TSLA (−1.32 vs −1.30 first iteration), but the improvement is clearest in SPY Fall where R² went positive.
+2. **Seasonal predictability differs by target.** For the volatility target (iter 2), Fall is the best season — SPY XGBoost achieves R² = +0.1192 in Fall, the only positive seasonal R² in iter 2. For the return target (iter 1), Summer is the best season (SPY XGBoost R² = −0.356, least negative). The difference reflects the target: realized volatility is driven by clustering effects that are strongest in the post-summer period, while raw returns have no such seasonal structure.
+3. **The volatility target produces the only positive seasonal R²**, but its overall mean R² is more negative than the return target (SPY XGBoost: −1.847 vs −1.152). The improvement is not uniform — it is concentrated in Fall, where volatility clustering gives the model genuine predictive signal. Outside Fall, the return target's mean R² is less negative.
 4. **TSLA is harder across the board.** Higher volatility (RMSE ~3–4× SPY) and more erratic regime shifts (meme-stock 2020–2022, post-election 2024 spike) make both regression and classification significantly more difficult. TSLA classification F1 fails to meaningfully clear the 0.33 baseline.
-5. **The 10-year dataset activates `is_major_event`**: 144 VIX>30 days vs. 15 in the Polygon 2-year window. The feature now has sufficient examples to contribute, as seen in its non-zero coefficient weight in the linear models.
+5. **`is_major_event` is active in both iterations.** Both iter 1 and iter 2 use the same 10-year Yahoo Finance dataset with 144 VIX>30 days, so the feature contributes non-zero weight in both. The key remaining difference is design: iter 2's 5-day embargo prevents feature leakage across the stress-period boundaries that iter 1 is exposed to.
 
 ---
 
@@ -854,7 +936,7 @@ All four iterations use the same 16 features and the same 10-year Yahoo Finance 
 
 | Iteration | Train | Test | Embargo | Folds | Source |
 |---|---|---|---|---|---|
-| 1 | 63d | 42d | 0d | ~9 | `midterm.ipynb` (Polygon, 2yr) |
+| 1 | 63d | 42d | 0d | ~58 | `midterm-feature-engineered.ipynb` (Yahoo Finance, 10yr) |
 | 2 | 63d | 21d | 5d | 58 | `spy/tsla_modeling.ipynb` |
 | 3 | 3d | 1d | 0d | 2,507 | `spy/tsla_modeling_iter3.ipynb` |
 | 4 | 15d | 5d | 2d | 498 | `spy/tsla_modeling_iter4.ipynb` |
@@ -863,7 +945,7 @@ All four iterations use the same 16 features and the same 10-year Yahoo Finance 
 
 | Iteration | RMSE (mean ± std) | Seasonal R² highlights |
 |---|---|---|
-| 1 (binary return target) | 0.0258 ± 0.0125 | n/a (different target) |
+| 1 (5-day return target) | 0.0257 ± 0.0155 | n/a (different target unit) |
 | **2** | 0.005664 ± 0.005197 | Fall R² = **+0.1192** (only positive in Iter2) |
 | **3** | 0.002181 ± 0.002797 | All seasons positive: Spring **+0.864**, Summer +0.636, Fall +0.605, Winter +0.576 |
 | **4** | 0.004424 ± 0.004333 | Spring **+0.421**, Fall **+0.178** |
@@ -874,7 +956,7 @@ Iteration 3 achieves the lowest RMSE and all-positive seasonal R² for SPY XGBoo
 
 | Iteration | RMSE (mean ± std) | Seasonal R² highlights |
 |---|---|---|
-| 1 (binary return target) | 0.1062 ± 0.0311 | n/a (different target) |
+| 1 (5-day return target) | 0.0989 ± 0.0380 | n/a (different target unit) |
 | 2 | 0.019440 ± 0.011024 | All negative: best was Summer −0.3097 |
 | **3** | 0.008691 ± 0.011084 | All positive: Spring **+0.546**, Winter **+0.444**, Summer +0.370, Fall +0.284 |
 | 4 | 0.016236 ± 0.012345 | Only Spring positive: **+0.228** |
@@ -885,7 +967,7 @@ TSLA shows the same Iter3 interpolation effect. Iter4 achieves positive R² only
 
 | Iteration | Logistic Regression F1 | Random Forest F1 | Best season (RF) |
 |---|---|---|---|
-| 1 (binary, baseline ≈ 0.50) | 0.4605 ± 0.0804 | 0.5094 ± 0.0733 | Winter 0.5775 |
+| 1 (binary, baseline ≈ 0.50) | 0.4504 ± 0.0758 | 0.4752 ± 0.0888 | Summer 0.5472 |
 | 2 | 0.3288 ± 0.0742 | 0.3410 ± 0.0643 | Fall 0.4350 |
 | 3* | 0.3858 ± 0.4869 | 0.4056 ± 0.4911 | Fall 0.3766 (agg.) |
 | **4** | 0.3075 ± 0.2454 | 0.3079 ± 0.2472 | Fall **0.3971** |
@@ -898,7 +980,7 @@ Iteration 4 F1 values (0.307–0.308) sit just below the Iteration 2 scores (0.3
 
 | Iteration | Logistic Regression F1 | Random Forest F1 | Best season (RF) |
 |---|---|---|---|
-| 1 (binary, baseline ≈ 0.50) | 0.4439 ± 0.0970 | 0.4929 ± 0.0473 | Fall 0.5453 |
+| 1 (binary, baseline ≈ 0.50) | 0.4419 ± 0.0801 | 0.4706 ± 0.0947 | Winter 0.5060 |
 | 2 | 0.2951 ± 0.0692 | 0.2946 ± 0.0824 | Summer 0.3554 |
 | 3* | 0.3649 ± 0.4815 | 0.3758 ± 0.4844 | Winter 0.3597 (agg.) |
 | **4** | 0.2405 ± 0.1766 | 0.2593 ± 0.1903 | Summer 0.3763 |
@@ -925,7 +1007,7 @@ TSLA classification degrades with shorter windows. Iteration 4's mean F1 (0.241�
 
 ## Conclusion
 
-This project evaluated four walk-forward configurations across two tickers (SPY, TSLA), two tasks (regression, classification), and three model families (linear, ridge, tree-based) over a 10-year dataset. The progression from a 2-year Polygon dataset to a 10-year Yahoo Finance dataset, and from a 63-day training window down to 3 days and back up to 15, produced a clear and consistent picture.
+This project evaluated four walk-forward configurations across two tickers (SPY, TSLA), two tasks (regression, classification), and three model families (linear, ridge, tree-based) over a 10-year Yahoo Finance dataset (2015–2024). The progression from a 63-day training window with binary targets (Iteration 1) to refined targets and embargo (Iteration 2), and the further experiments with extreme short windows (Iterations 3 and 4), produced a clear and consistent picture.
 
 ### What the models can and cannot predict
 
